@@ -14,7 +14,7 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: '/api/auth/google/callback',
+      callbackURL: '/auth/google/callback',
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -26,7 +26,7 @@ passport.use(
             email: profile.emails[0].value,
           });
         }
-        done(null, user);
+        done(null, user); // Proceed with login success after user is found/created
       } catch (err) {
         done(err, null);
       }
@@ -34,7 +34,16 @@ passport.use(
   )
 );
 
+// Updated serialize and deserialize for Passport session
 passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => User.findById(id, done));
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
+});
 
 export default passport;

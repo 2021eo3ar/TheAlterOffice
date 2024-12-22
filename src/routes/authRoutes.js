@@ -4,9 +4,8 @@ import passport from '../config/googleAuth.js';
 
 const router = express.Router();
 
-// router.get('/google', googleLogin);
-// router.get('/google/callback', googleCallback, loginSuccess);
-router.get('/success', loginSuccess);
+router.get('/google', googleLogin);
+router.get('/google/callback', googleCallback, loginSuccess);
 router.get('/logout', logout);
 
 export default router;

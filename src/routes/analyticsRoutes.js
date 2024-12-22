@@ -1,9 +1,20 @@
 import express from 'express';
-import { getURLAnalytics } from '../controllers/analyticsController.js';
-import { ensureAuthenticated } from '../middlewares/auth.Middleware.js';
+import { 
+  getURLAnalytics, 
+  getTopicAnalytics, 
+  getOverallAnalytics 
+} from '../controllers/analyticsController.js';
+import { ensureAuthenticated } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
+// Get URL Analytics
 router.get('/:alias', ensureAuthenticated, getURLAnalytics);
+
+// Get Topic-Based Analytics
+router.get('/topic/:topic', ensureAuthenticated, getTopicAnalytics);
+
+// Get Overall Analytics
+router.get('/overall', ensureAuthenticated, getOverallAnalytics);
 
 export default router;
