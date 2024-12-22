@@ -1,8 +1,11 @@
 import { body, validationResult } from 'express-validator';
 
-export const validateAuth = [
-  body('email').isEmail().withMessage('Invalid email address'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+export const validateURLRequest = [
+  body('longUrl').isURL().withMessage('Invalid URL format'),
+  body('customAlias')
+    .optional()
+    .isAlphanumeric()
+    .withMessage('Custom alias must contain only letters and numbers'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

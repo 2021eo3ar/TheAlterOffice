@@ -1,6 +1,6 @@
-import crypto from 'crypto';
+import { nanoid } from 'nanoid';
 
-const generateShortURL = () => crypto.randomBytes(4).toString('hex');
-
-
-export default generateShortURL;
+export const generateShortURL = (baseUrl, customAlias) => {
+  const alias = customAlias || nanoid(8);
+  return `${baseUrl}/${alias}`;
+};

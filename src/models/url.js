@@ -1,11 +1,11 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const URLSchema = new mongoose.Schema({
-    longUrl: { type: String, required: true },
-    shortUrl: { type: String, required: true, unique: true },
-    topic: { type: String },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    createdAt: { type: Date, default: Date.now },
-  });
+const urlSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  longUrl: { type: String, required: true },
+  shortUrl: { type: String, required: true },
+  alias: { type: String, required: true, unique: true },
+  topic: { type: String },
+});
 
-export const URL = mongoose.model('URL', URLSchema);
+export default mongoose.model('URL', urlSchema);
