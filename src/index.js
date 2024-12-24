@@ -11,6 +11,7 @@ import { errorHandler } from './middlewares/errorHandler.Middleware.js';
 import swaggerUi from 'swagger-ui-express';
 import connectDB from './config/db.js';
 import fs from 'fs'; // Use fs module to read JSON file
+import cors from 'cors';
 
 dotenv.config();
 
@@ -38,6 +39,14 @@ app.use(express.urlencoded({ extended: true }));
 connectDB();
 // redisClient.on('connect', () => console.log('Connected to Redis'));
 
+app.use(cors(
+  {
+    origin: 'http://localhost:5000',
+    methods : ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  }
+));
+
 // Session Management
 app.use(
   session({
@@ -54,7 +63,7 @@ app.use(passport.session());
 
 // Routes
 app.use('/auth', authRoutes);
-app.use('/api/shorten', urlRoutes);
+app.use('/api/short', urlRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Swagger Documentation

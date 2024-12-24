@@ -1,11 +1,14 @@
 import mongoose from 'mongoose';
 
-const analyticsSchema = new mongoose.Schema({
-  alias: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now },
-  userAgent: { type: String },
-  ip: { type: String },
-  geolocation: { type: Object },
+const AnalyticsSchema = new mongoose.Schema({
+  alias: String,
+  ip: String,
+  timestamp: Date,
+  userAgent: String,
+  osType: String,
+  deviceType: String,
+  topic: String, // New field for topic-based analytics
 });
 
-export default mongoose.model('Analytics', analyticsSchema);
+export default mongoose.model('Analytics', AnalyticsSchema);
+
