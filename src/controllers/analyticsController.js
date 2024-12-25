@@ -40,7 +40,6 @@ export const getURLAnalytics = async (req, res) => {
       deviceType: deviceTypeStats,
     });
   } catch (error) {
-    console.error("Error retrieving URL analytics:", error);
     res.status(500).json({ error: "Error retrieving URL analytics" });
   }
 };
@@ -160,7 +159,6 @@ export const getOverallAnalytics = async (req, res) => {
       deviceType: deviceTypeStats,
     });
   } catch (error) {
-    console.error("Error retrieving overall analytics:", error);
     res.status(500).json({ error: "Error retrieving overall analytics" });
   }
 };

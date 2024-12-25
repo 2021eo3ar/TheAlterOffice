@@ -7,7 +7,6 @@ dotenv.config();
 
 // Shorten URL
 export const createShortURL = async (req, res) => {
-  console.log("shorten api hit");
   const { longUrl, customAlias, topic } = req.body;
   const userId = req.user.id;
 
@@ -23,12 +22,11 @@ export const createShortURL = async (req, res) => {
       topic,
     });
     await newUrl.save();
-    console.log("newUrl:", newUrl);
 
     await redisClient.set(alias, longUrl);
 
     const cachedUrl = await redisClient.get(alias);
-    console.log("cachedUrl:", cachedUrl);
+
 
     res.status(201).json({ shortUrl, createdAT: Date.now() });
   } catch (error) {
@@ -39,16 +37,13 @@ export const createShortURL = async (req, res) => {
 // Redirect Short URL
 export const redirectShortURL = async (req, res) => {
   const { alias } = req.params;
-  console.log("Requested alias:", alias);
 
   try {
     // Step 1: Check Redis cache for the long URL
     let longUrl = await redisClient.get(alias);
-    console.log("Redis cache - longUrl:", longUrl);
 
     // If not found in Redis, fetch from the database
     if (!longUrl) {
-      console.log("Not found in Redis, fetching from DB...");
       const urlData = await URL.findOne({ alias });
       if (!urlData) {
         return res.status(404).json({ error: "Short URL not found" });
@@ -56,7 +51,6 @@ export const redirectShortURL = async (req, res) => {
 
       longUrl = urlData.longUrl;
       await redisClient.set(alias, longUrl); // Cache it for future use
-      console.log("Saved longUrl to Redis:", longUrl);
     }
 
     // Parsing OS and Device data from user-agent
@@ -71,9 +65,6 @@ export const redirectShortURL = async (req, res) => {
       osType,
       deviceType,
     });
-    console.log("analyticsData:", analyticsData);
-    console.log({ ip, osType, deviceType });
-
 
     if (!osType || !deviceType) {
       // If analytics data is missing in Redis, parse from user-agent
@@ -150,14 +141,11 @@ export const redirectShortURL = async (req, res) => {
 
     // Step 4: Redirect to the long URL
     if (longUrl) {
-      console.log("Redirecting to longUrl:", longUrl);
       return res.redirect(longUrl); // Redirect the user to the long URL
     } else {
-      console.log("Long URL is not valid");
       return res.status(500).json({ error: "Long URL is not valid" });
     }
   } catch (error) {
-    console.error("Error redirecting to URL:", error);
     return res.status(500).json({ error: "Error redirecting to URL" });
   }
 };
