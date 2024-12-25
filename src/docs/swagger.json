@@ -367,7 +367,7 @@
     "/api/analytics/{alias}": {
       "get": {
         "summary": "Get URL Analytics",
-        "description": "Fetch analytics data for a specific short URL alias.",
+        "description": "Fetch analytics for a specific URL identified by its alias.",
         "tags": ["Analytics"],
         "security": [{ "BearerAuth": [] }],
         "parameters": [
@@ -378,46 +378,121 @@
             "schema": {
               "type": "string"
             },
-            "description": "The alias of the short URL."
+            "description": "The alias of the URL to fetch analytics for."
           }
         ],
         "responses": {
           "200": {
-            "description": "Analytics data fetched successfully.",
+            "description": "Successful response with URL analytics data",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "totalClicks": { "type": "number" },
-                    "uniqueClicks": { "type": "number" },
+                    "totalClicks": {
+                      "type": "integer",
+                      "description": "Total number of clicks for the specific URL"
+                    },
+                    "uniqueClicks": {
+                      "type": "integer",
+                      "description": "Total number of unique clicks for the specific URL"
+                    },
                     "clicksByDate": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "_id": { "type": "string" },
-                          "count": { "type": "number" }
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "clicks": {
+                            "type": "integer"
+                          }
                         }
-                      }
+                      },
+                      "description": "Clicks aggregated by date for the specific URL"
                     },
-                    "osTypeAnalytics": { "type": "array" },
-                    "deviceTypeAnalytics": { "type": "array" }
+                    "osType": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "osName": {
+                            "type": "string"
+                          },
+                          "uniqueClicks": {
+                            "type": "integer"
+                          },
+                          "uniqueUsers": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "description": "Operating system stats for the specific URL"
+                    },
+                    "deviceType": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "deviceName": {
+                            "type": "string"
+                          },
+                          "uniqueClicks": {
+                            "type": "integer"
+                          },
+                          "uniqueUsers": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "description": "Device type stats for the specific URL"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Short URL not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Short URL not found"
+                    }
                   }
                 }
               }
             }
           },
           "500": {
-            "description": "Error fetching analytics."
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Error retrieving URL analytics"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/analytics/topic/{topic}": {
       "get": {
-        "summary": "Get Topic Analytics",
-        "description": "Fetch analytics data for a specific topic.",
+        "summary": "Get Topic-Based Analytics",
+        "description": "Fetch analytics for all URLs related to a specific topic.",
         "tags": ["Analytics"],
         "security": [{ "BearerAuth": [] }],
         "parameters": [
@@ -428,38 +503,96 @@
             "schema": {
               "type": "string"
             },
-            "description": "The topic to fetch analytics for."
+            "description": "The topic to filter the URLs by."
           }
         ],
         "responses": {
           "200": {
-            "description": "Analytics data fetched successfully.",
+            "description": "Successful response with analytics data for the given topic",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "totalClicks": { "type": "number" },
-                    "uniqueClicks": { "type": "number" },
-                    "clicksByTopic": {
+                    "totalClicks": {
+                      "type": "integer",
+                      "description": "Total number of clicks for all URLs in the topic"
+                    },
+                    "uniqueClicks": {
+                      "type": "integer",
+                      "description": "Total number of unique clicks for all URLs in the topic"
+                    },
+                    "clicksByDate": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "_id": { "type": "string" },
-                          "count": { "type": "number" }
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "clicks": {
+                            "type": "integer"
+                          }
                         }
-                      }
+                      },
+                      "description": "Clicks aggregated by date for all URLs in the topic"
                     },
-                    "osTypeAnalytics": { "type": "array" },
-                    "deviceTypeAnalytics": { "type": "array" }
+                    "urls": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "shortUrl": {
+                            "type": "string",
+                            "description": "The short URL"
+                          },
+                          "totalClicks": {
+                            "type": "integer"
+                          },
+                          "uniqueClicks": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "description": "List of URLs with their individual click stats"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No URLs found for this topic",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "No URLs found for this topic"
+                    }
                   }
                 }
               }
             }
           },
           "500": {
-            "description": "Error fetching topic analytics."
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Error retrieving topic analytics"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -467,38 +600,117 @@
     "/api/analytics/overall": {
       "get": {
         "summary": "Get Overall Analytics",
-        "description": "Fetch overall analytics data.",
+        "description": "Fetch overall analytics for all URLs created by the authenticated user.",
         "tags": ["Analytics"],
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "Overall analytics data fetched successfully.",
+            "description": "Successful response with overall analytics data",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "totalClicks": { "type": "number" },
-                    "uniqueClicks": { "type": "number" },
+                    "totalUrls": {
+                      "type": "integer",
+                      "description": "Total number of URLs created by the user"
+                    },
+                    "totalClicks": {
+                      "type": "integer",
+                      "description": "Total number of clicks for all URLs created by the user"
+                    },
+                    "uniqueClicks": {
+                      "type": "integer",
+                      "description": "Total number of unique clicks for all URLs created by the user"
+                    },
                     "clicksByDate": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "_id": { "type": "string" },
-                          "count": { "type": "number" }
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "clicks": {
+                            "type": "integer"
+                          }
                         }
-                      }
+                      },
+                      "description": "Clicks aggregated by date for all URLs created by the user"
                     },
-                    "osTypeAnalytics": { "type": "array" },
-                    "deviceTypeAnalytics": { "type": "array" }
+                    "osType": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "osName": {
+                            "type": "string"
+                          },
+                          "uniqueClicks": {
+                            "type": "integer"
+                          },
+                          "uniqueUsers": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "description": "Operating system stats for all URLs"
+                    },
+                    "deviceType": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "deviceName": {
+                            "type": "string"
+                          },
+                          "uniqueClicks": {
+                            "type": "integer"
+                          },
+                          "uniqueUsers": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "description": "Device type stats for all URLs"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No URLs found for this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "No URLs found for this user"
+                    }
                   }
                 }
               }
             }
           },
           "500": {
-            "description": "Error fetching overall analytics."
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Error retrieving overall analytics"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

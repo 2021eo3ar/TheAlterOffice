@@ -1,168 +1,168 @@
-import Analytics from '../models/Analytics.js';
-import { parseUserAgent } from '../utils/userAgentParser.js';
+import URL from "../models/URL.js";
+import redisClient from "../config/redis.js";
 
-// Helper to parse and count OS and Device Analytics
-const getOSAndDeviceTypeAnalytics = async (filter) => {
-  try {
-    const analyticsData = await Analytics.find(filter);
-    const osTypeCounts = {};
-    const deviceTypeCounts = {};
-    const uniqueUsersByOS = {};
-    const uniqueUsersByDevice = {};
-
-    analyticsData.forEach((entry) => {
-      const { os, device } = parseUserAgent(entry.userAgent);
-      osTypeCounts[os] = (osTypeCounts[os] || 0) + 1;
-      deviceTypeCounts[device] = (deviceTypeCounts[device] || 0) + 1;
-
-      uniqueUsersByOS[os] = uniqueUsersByOS[os] || new Set();
-      uniqueUsersByOS[os].add(entry.ip);
-
-      uniqueUsersByDevice[device] = uniqueUsersByDevice[device] || new Set();
-      uniqueUsersByDevice[device].add(entry.ip);
-    });
-
-    return {
-      osTypeAnalytics: Object.keys(osTypeCounts).map((os) => ({
-        osName: os,
-        uniqueClicks: osTypeCounts[os],
-        uniqueUsers: uniqueUsersByOS[os].size,
-      })),
-      deviceTypeAnalytics: Object.keys(deviceTypeCounts).map((device) => ({
-        deviceName: device,
-        uniqueClicks: deviceTypeCounts[device],
-        uniqueUsers: uniqueUsersByDevice[device].size,
-      })),
-    };
-  } catch (error) {
-    console.error('Error in getOSAndDeviceTypeAnalytics:', error);
-    throw new Error('Failed to fetch OS and Device Type Analytics');
-  }
-};
-
-
-// Get URL Analytics
 export const getURLAnalytics = async (req, res) => {
   const { alias } = req.params;
-  const recentDays = 7;
-  const filter = { alias, timestamp: { $gte: new Date(Date.now() - recentDays * 24 * 60 * 60 * 1000) } };
 
   try {
-    const totalClicks = await Analytics.countDocuments(filter);
-    const uniqueClicks = await Analytics.distinct('ip', filter);
+    // Fetch data from the database
+    const url = await URL.findOne({ alias });
+    if (!url) {
+      return res.status(404).json({ error: "Short URL not found" });
+    }
 
-    const clicksByDate = await Analytics.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    // Get total and unique clicks
+    const totalClicks = url.totalClicks;
+    const uniqueClicks = url.uniqueClicks;
 
-    const { osTypeAnalytics, deviceTypeAnalytics } = await getOSAndDeviceTypeAnalytics(filter);
+    // Get the last 7 days of clicks
+    const clicksByDate = url.clicksByDate.slice(-7);
 
+    // OS Type and Device Type stats calculation
+    const osTypeStats = url.osType.map(os => ({
+      osName: os.osName,
+      uniqueClicks: os.uniqueClicks,
+      uniqueUsers: os.uniqueUsers,
+    }));
+
+    const deviceTypeStats = url.deviceType.map(device => ({
+      deviceName: device.deviceName,
+      uniqueClicks: device.uniqueClicks,
+      uniqueUsers: device.uniqueUsers,
+    }));
+
+    // Send the response
     res.status(200).json({
       totalClicks,
-      uniqueClicks: uniqueClicks.length,
+      uniqueClicks,
       clicksByDate,
-      osTypeAnalytics,
-      deviceTypeAnalytics,
+      osType: osTypeStats,
+      deviceType: deviceTypeStats,
     });
   } catch (error) {
-    console.error('Error in getURLAnalytics:', error);
-    res.status(500).json({ error: 'Error fetching analytics' });
+    console.error("Error retrieving URL analytics:", error);
+    res.status(500).json({ error: "Error retrieving URL analytics" });
   }
 };
 
-// Get Topic Analytics
+// Get Topic-Based Analytics for a specific topic
 export const getTopicAnalytics = async (req, res) => {
   const { topic } = req.params;
-  const filter = { topic };
 
   try {
-    const totalClicks = await Analytics.countDocuments(filter);
-    const uniqueClicks = await Analytics.distinct('ip', filter);
+    const urls = await URL.find({ topic });
+    if (!urls.length) {
+      return res.status(404).json({ error: "No URLs found for this topic" });
+    }
 
-    const clicksByTopic = await Analytics.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: '$topic',
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    let totalClicks = 0;
+    let uniqueClicks = 0;
+    let clicksByDate = [];
+    const urlStats = [];
 
-    const { osTypeAnalytics, deviceTypeAnalytics } = await getOSAndDeviceTypeAnalytics(filter);
+    urls.forEach(url => {
+      totalClicks += url.totalClicks;
+      uniqueClicks += url.uniqueClicks;
 
-    res.status(200).json({
-      totalClicks,
-      uniqueClicks: uniqueClicks.length,
-      clicksByTopic,
-      osTypeAnalytics,
-      deviceTypeAnalytics,
+      urlStats.push({
+        shortUrl: url.shortUrl,
+        totalClicks: url.totalClicks,
+        uniqueClicks: url.uniqueClicks,
+      });
+
+      // Aggregate clicks by date for all URLs in the topic
+      url.clicksByDate.forEach(entry => {
+        const existingEntry = clicksByDate.find(dateEntry => dateEntry.date === entry.date);
+        if (existingEntry) {
+          existingEntry.clicks += entry.clicks;
+        } else {
+          clicksByDate.push({ date: entry.date, clicks: entry.clicks });
+        }
+      });
     });
-  } catch (error) {
-    console.error('Error in getTopicAnalytics:', error);
-    res.status(500).json({ error: 'Error fetching topic analytics' });
-  }
-};
 
-// Get Overall Analytics
-export const getOverallAnalytics = async (req, res) => {
-  const filter = {}; // No specific filter for overall analytics
-
-  try {
-    const totalClicks = await Analytics.countDocuments(filter);
-    const uniqueClicks = await Analytics.distinct('ip', filter);
-
-    const clicksByDate = await Analytics.aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const { osTypeAnalytics, deviceTypeAnalytics } = await getOSAndDeviceTypeAnalytics(filter);
+    // Sort by date (most recent first)
+    clicksByDate.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     res.status(200).json({
       totalClicks,
-      uniqueClicks: uniqueClicks.length,
+      uniqueClicks,
       clicksByDate,
-      osTypeAnalytics,
-      deviceTypeAnalytics,
+      urls: urlStats,
     });
   } catch (error) {
-    console.error('Error in getOverallAnalytics:', error);
-    res.status(500).json({ error: 'Error fetching overall analytics' });
+    res.status(500).json({ error: "Error retrieving topic analytics" });
   }
 };
 
-// Add parsing functionality during data insertion
-export const addAnalyticsEntry = async (req, res) => {
-  const { alias, ip, timestamp, userAgent, topic } = req.body;
-
+// Get Overall Analytics for all URLs created by the authenticated user
+export const getOverallAnalytics = async (req, res) => {
   try {
-    const { os, device } = parseUserAgent(userAgent);
+    const userId = req.user.id;
 
-    const newEntry = new Analytics({
-      alias,
-      ip,
-      timestamp,
-      userAgent,
-      osType: os,
-      deviceType: device,
-      topic,
+    const urls = await URL.find({ userId });
+    if (!urls.length) {
+      return res.status(404).json({ error: "No URLs found for this user" });
+    }
+
+    let totalUrls = urls.length;
+    let totalClicks = 0;
+    let uniqueClicks = 0;
+    let clicksByDate = [];
+    let osTypeStats = [];
+    let deviceTypeStats = [];
+
+    urls.forEach(url => {
+      totalClicks += url.totalClicks;
+      uniqueClicks += url.uniqueClicks;
+
+      // Aggregate clicks by date for all URLs created by the user
+      url.clicksByDate.forEach(entry => {
+        const existingEntry = clicksByDate.find(dateEntry => dateEntry.date === entry.date);
+        if (existingEntry) {
+          existingEntry.clicks += entry.clicks;
+        } else {
+          clicksByDate.push({ date: entry.date, clicks: entry.clicks });
+        }
+      });
+
+      // OS type and device type stats calculation
+      url.osType.forEach(os => {
+        const osStat = osTypeStats.find(item => item.osName === os.osName);
+        if (osStat) {
+          osStat.uniqueClicks += os.uniqueClicks;
+          osStat.uniqueUsers += os.uniqueUsers;
+        } else {
+          osTypeStats.push({ osName: os.osName, uniqueClicks: os.uniqueClicks, uniqueUsers: os.uniqueUsers });
+        }
+      });
+
+      url.deviceType.forEach(device => {
+        const deviceStat = deviceTypeStats.find(item => item.deviceName === device.deviceName);
+        if (deviceStat) {
+          deviceStat.uniqueClicks += device.uniqueClicks;
+          deviceStat.uniqueUsers += device.uniqueUsers;
+        } else {
+          deviceTypeStats.push({ deviceName: device.deviceName, uniqueClicks: device.uniqueClicks, uniqueUsers: device.uniqueUsers });
+        }
+      });
     });
 
-    await newEntry.save();
-    res.status(201).json({ message: 'Analytics entry added successfully' });
+    // Sort clicksByDate by most recent
+    clicksByDate.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.status(200).json({
+      totalUrls,
+      totalClicks,
+      uniqueClicks,
+      clicksByDate,
+      osType: osTypeStats,
+      deviceType: deviceTypeStats,
+    });
   } catch (error) {
-    console.error('Error in addAnalyticsEntry:', error);
-    res.status(500).json({ error: 'Failed to add analytics entry' });
+    console.error("Error retrieving overall analytics:", error);
+    res.status(500).json({ error: "Error retrieving overall analytics" });
   }
 };
+
+
